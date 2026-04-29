@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>승강시설 장애분석 시스템</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --navy:#1B2A4A;--blue:#2C5F8A;--teal:#0D7A8A;--green:#1B6B4A;--mint:#2AAF7E;
+  --orange:#E8843A;--red:#C0392B;--silver:#D4DCE8;--light:#EEF2F7;--bg:#F0F4F8;
+  --white:#fff;--gray:#64748B;--lgray:#94A3B8;--border:#E2E8F0;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--navy);min-height:100vh}
+
+/* ── Header */
+.hdr{background:var(--navy);height:60px;display:flex;align-items:center;padding:0 2rem;gap:14px;
+  box-shadow:0 2px 16px rgba(0,0,0,.2);position:sticky;top:0;z-index:50}
+.hdr-badge{background:var(--orange);color:#fff;font-size:11px;font-weight:800;padding:3px 9px;border-radius:5px}
+.hdr-t{color:#fff;font-size:16px;font-weight:700}
+.hdr-s{color:#88AACC;font-size:11px;font-weight:300}
+
+/* ── Main */
+.main{max-width:900px;margin:0 auto;padding:2.5rem 1.25rem 5rem}
+
+/* ── Steps */
+.steps{display:flex;align-items:center;margin-bottom:2.5rem}
+.step-wrap{display:flex;align-items:center;flex:1}
+.step-item{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.step-num{width:30px;height:30px;border-radius:50%;background:var(--border);color:var(--lgray);
+  font-size:13px;font-weight:800;display:flex;align-items:center;justify-content:center;transition:.3s}
+.step-lbl{font-size:13px;color:var(--lgray);white-space:nowrap}
+.step-item.active .step-num{background:var(--orange);color:#fff}
+.step-item.active .step-lbl{color:var(--navy);font-weight:700}
+.step-item.done .step-num{background:var(--green);color:#fff}
+.step-item.done .step-lbl{color:var(--green)}
+.step-line{flex:1;height:2px;background:var(--border);margin:0 8px;min-width:16px;transition:.3s}
+.step-line.done{background:var(--green)}
+
+/* ── Card */
+.card{background:var(--white);border:1px solid var(--border);border-radius:16px;
+  padding:1.75rem;box-shadow:0 2px 16px rgba(27,42,74,.07);margin-bottom:1.25rem}
+.card-title{font-size:15px;font-weight:700;color:var(--navy);margin-bottom:1.25rem;
+  display:flex;align-items:center;gap:10px}
+.card-title::before{content:'';width:4px;height:20px;background:var(--orange);border-radius:2px}
+
+/* ── Drop zone */
+.drop-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+@media(max-width:540px){.drop-grid{grid-template-columns:1fr}}
+.drop-lbl{font-size:13px;font-weight:600;color:var(--navy);margin-bottom:8px}
+.req{color:var(--red)}
+.drop{display:flex;flex-direction:column;align-items:center;gap:6px;padding:1.75rem 1rem;
+  border:2px dashed var(--silver);border-radius:12px;background:var(--light);
+  cursor:pointer;transition:.22s;position:relative}
+.drop input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.drop:hover,.drop.over{border-color:var(--orange)!important;background:#FFF7F2!important}
+.drop.filled{border-color:var(--green)!important;background:#F0FBF5!important}
+.drop-icon{font-size:2rem;pointer-events:none}
+.drop-h1{font-size:13px;font-weight:600;color:var(--navy);pointer-events:none}
+.drop-h2{font-size:11px;color:var(--lgray);pointer-events:none}
+.drop-fname{font-size:11px;font-weight:700;color:var(--green);font-family:'JetBrains Mono',monospace;
+  word-break:break-all;text-align:center;max-width:100%;pointer-events:none}
+
+/* ── Info box */
+.info-box{margin-top:1.25rem;padding:1rem 1.25rem;background:var(--light);border-radius:10px;
+  font-size:13px;color:var(--gray);line-height:1.9}
+.info-box strong{color:var(--navy);display:block;margin-bottom:4px}
+
+/* ── Buttons */
+.btn-row{display:flex;justify-content:center;gap:12px;margin-top:1.5rem}
+.btn{display:inline-flex;align-items:center;gap:8px;padding:11px 28px;border:none;
+  border-radius:10px;font-family:'Noto Sans KR',sans-serif;font-size:14px;font-weight:700;
+  cursor:pointer;text-decoration:none;transition:.2s}
+.btn-primary{background:var(--navy);color:#fff;box-shadow:0 4px 14px rgba(27,42,74,.25)}
+.btn-primary:hover:not(:disabled){background:var(--blue);transform:translateY(-1px)}
+.btn-primary:disabled{opacity:.4;cursor:not-allowed;transform:none}
+.btn-ghost{background:var(--border);color:var(--gray)}
+.btn-ghost:hover{background:var(--silver)}
+.btn-dl{background:var(--green);color:#fff;font-size:13px;padding:9px 18px}
+.btn-dl:hover{background:var(--teal)}
+
+/* ── Error */
+.err-box{background:#FFF0EE;border:1.5px solid #F5C6BC;border-radius:12px;padding:1.25rem;
+  color:var(--red);font-size:14px;margin-bottom:1rem}
+.err-box strong{display:block;margin-bottom:6px}
+
+/* ── Progress */
+.prog-card{background:var(--navy);color:#fff;border-radius:16px;padding:2rem;margin-bottom:1.25rem}
+.prog-top{display:flex;justify-content:space-between;font-size:13px;color:#88AACC;margin-bottom:6px}
+.prog-step{font-size:15px;font-weight:700;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.bar-bg{height:8px;background:#2A3F6A;border-radius:4px;overflow:hidden}
+.bar-fill{height:100%;background:linear-gradient(90deg,var(--teal),var(--mint));
+  border-radius:4px;transition:width .5s ease;width:0%}
+.prog-hint{text-align:center;font-size:12px;color:#88AACC;margin-top:14px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.spinner{display:inline-block;width:16px;height:16px;border:2.5px solid #88AACC;
+  border-top-color:var(--mint);border-radius:50%;animation:spin .8s linear infinite;flex-shrink:0}
+
+/* ── Done */
+.done-hdr{display:flex;align-items:center;gap:12px;margin-bottom:1.5rem}
+.done-badge{background:var(--green);color:#fff;font-size:12px;font-weight:700;padding:4px 12px;border-radius:20px}
+.done-title{font-size:20px;font-weight:900;color:var(--navy)}
+
+/* ── KPI grid */
+.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-bottom:1.25rem}
+@media(max-width:620px){.kpi-grid{grid-template-columns:repeat(2,1fr)}}
+.kpi-card{background:var(--white);border:1px solid var(--border);border-radius:12px;
+  padding:1.1rem;text-align:center;box-shadow:0 2px 8px rgba(27,42,74,.06)}
+.kpi-bar{height:4px;border-radius:2px;margin-bottom:10px}
+.kpi-lbl{font-size:11px;color:var(--lgray);font-weight:500;margin-bottom:3px}
+.kpi-val{font-size:24px;font-weight:900;color:var(--navy);line-height:1.1}
+.kpi-sub{font-size:11px;color:var(--lgray);margin-top:2px}
+
+/* ── Download grid */
+.dl-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem}
+@media(max-width:580px){.dl-grid{grid-template-columns:1fr}}
+.dl-card{border:1.5px solid var(--border);border-radius:12px;padding:1.25rem;
+  display:flex;flex-direction:column;gap:10px;transition:border-color .2s}
+.dl-card:hover{border-color:var(--teal)}
+.dl-icon{font-size:2rem}
+.dl-name{font-size:14px;font-weight:700;color:var(--navy)}
+.dl-desc{font-size:12px;color:var(--lgray);flex:1;word-break:break-all}
+
+/* ── Animation */
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.fade-up{animation:fadeUp .4s ease both}
+.hidden{display:none!important}
+
+/* ── v21 전년비교 섹션 */
+.yoy-section{margin-top:1.25rem;border:1.5px solid var(--border);border-radius:12px;overflow:hidden}
+.yoy-toggle{padding:.85rem 1.1rem;background:var(--light);cursor:pointer;display:flex;align-items:center;gap:.6rem;user-select:none}
+.yoy-toggle:hover{background:#e8edf5}
+.yoy-badge{background:#e8f0fe;color:#2C5F8A;font-size:.72rem;font-weight:700;padding:2px 8px;border-radius:20px}
+.yoy-desc{font-size:.8rem;color:var(--gray);flex:1}
+.opt{color:#888;font-size:.78rem;margin-left:4px}
+#yoy-drop-area{padding:.6rem 1.1rem 1rem}
+.drop-opt{border-style:dashed;border-color:#9AAEC8;background:#f8faff}
+.drop-opt:hover{background:#eef4ff}
+.yoy-info-box{margin-top:.6rem;padding:.6rem 1rem;background:#e8f5e9;border-radius:8px;
+  border-left:3px solid #27AE60;font-size:.82rem;color:#1b5e20}
+/* ── v21 완료 화면 뱃지 */
+.yoy-done-badge{display:inline-block;background:#e8f5e9;color:#1b5e20;
+  font-size:.78rem;font-weight:700;padding:3px 10px;border-radius:20px;margin-left:.5rem}
+.repeat-done-badge{display:inline-block;background:#fff3e0;color:#e65100;
+  font-size:.78rem;font-weight:700;padding:3px 10px;border-radius:20px;margin-left:.5rem}
+</style>
+</head>
+<body>
+
+<header class="hdr">
+  <span class="hdr-badge">EL · ES</span>
+  <div>
+    <div class="hdr-t">승강시설 장애분석 시스템</div>
+    <div class="hdr-s">대구도시철도공사 승강시설팀</div>
+  </div>
+</header>
+
+<main class="main">
+  <!-- Steps -->
+  <div class="steps" id="steps">
+    <div class="step-wrap">
+      <div class="step-item active" id="s1"><span class="step-num">1</span><span class="step-lbl">파일 업로드</span></div>
+      <div class="step-line" id="l1"></div>
+    </div>
+    <div class="step-wrap">
+      <div class="step-item" id="s2"><span class="step-num">2</span><span class="step-lbl">데이터 처리</span></div>
+      <div class="step-line" id="l2"></div>
+    </div>
+    <div class="step-wrap">
+      <div class="step-item" id="s3"><span class="step-num">3</span><span class="step-lbl">보고서 완성</span></div>
+    </div>
+  </div>
+
+  <!-- ── STEP 1: Upload -->
+  <div id="view-upload" class="fade-up">
+    <div class="card">
+      <div class="card-title">분석 파일 업로드</div>
+      <div class="drop-grid">
+        <div>
+          <div class="drop-lbl">📋 장애신고 파일 <span class="req">*</span></div>
+          <div class="drop" id="drop1"
+               ondragover="onOver(event,1)" ondragleave="onLeave(1)" ondrop="onDrop(event,1)">
+            <input type="file" id="file1" accept=".xlsx,.xls" onchange="onFile(1,this.files[0])"/>
+            <span class="drop-icon" id="icon1">📁</span>
+            <span class="drop-h1">장애신고_드림스_.xlsx</span>
+            <span class="drop-h2">클릭하거나 파일을 여기에 놓으세요</span>
+            <span class="drop-fname" id="fname1"></span>
+          </div>
+        </div>
+        <div>
+          <div class="drop-lbl">🗂️ 장애분류 파일 <span class="req">*</span></div>
+          <div class="drop" id="drop2"
+               ondragover="onOver(event,2)" ondragleave="onLeave(2)" ondrop="onDrop(event,2)">
+            <input type="file" id="file2" accept=".xlsx,.xls" onchange="onFile(2,this.files[0])"/>
+            <span class="drop-icon" id="icon2">📁</span>
+            <span class="drop-h1">장애분류.xlsx</span>
+            <span class="drop-h2">클릭하거나 파일을 여기에 놓으세요</span>
+            <span class="drop-fname" id="fname2"></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── 전년 동기 비교 옵션 -->
+      <div class="yoy-section">
+        <div class="yoy-toggle" onclick="toggleYoy()">
+          <span id="yoy-arrow">▶</span>
+          <strong>📊 전년 동기 비교 분석</strong>
+          <span class="yoy-badge">선택</span>
+          <span class="yoy-desc">작년 동기 장애신고 파일 추가 시 전년 비교 슬라이드 자동 생성</span>
+        </div>
+        <div id="yoy-drop-area" class="hidden">
+          <div class="drop-lbl" style="margin-top:10px">📋 작년 동기 장애신고 파일
+            <span class="opt">(선택)</span>
+          </div>
+          <div class="drop drop-opt" id="drop3"
+               ondragover="onOver(event,3)" ondragleave="onLeave(3)" ondrop="onDrop(event,3)">
+            <input type="file" id="file3" accept=".xlsx,.xls" onchange="onFile(3,this.files[0])"/>
+            <span class="drop-icon" id="icon3">📅</span>
+            <span class="drop-h1">전년도_장애신고_드림스_.xlsx</span>
+            <span class="drop-h2">클릭하거나 파일을 여기에 놓으세요</span>
+            <span class="drop-fname" id="fname3"></span>
+          </div>
+          <div id="yoy-info" class="hidden yoy-info-box">
+            ✅ <strong>전년 비교 분석 활성화</strong> — 보고서에 전년 동기 비교 슬라이드가 추가됩니다.
+          </div>
+        </div>
+      </div>
+
+      <div class="info-box">
+        <strong>💡 자동 처리 내용</strong>
+        ① 장애신고 데이터 자동 정제 — 기타장애·인적장애 제거, 조치내역 키워드 필터링<br>
+        ② EL / ES 구분 → 1·2호선 분리 → 4개 시트 생성 (옥내외·장애종류 자동 태깅)<br>
+        ③ 엘리베이터·에스컬레이터 장애분석 보고서 PPT 자동 생성 (장치별 원인·대책 포함)<br>
+        ④ <strong>반복 장애 자동 탐지</strong> — 분기 내 동일 역사·장치 3회↑ 반복 시 예방점검 권고 슬라이드 추가<br>
+        ⑤ <strong>전년 동기 비교</strong> (작년 파일 업로드 시) — 월별·장치별 전년 대비 변화 슬라이드 추가
+      </div>
+    </div>
+    <div id="err-box" class="err-box hidden"><strong>⚠️ 오류</strong><p id="err-msg"></p></div>
+    <div class="btn-row">
+      <button class="btn btn-primary" id="submit-btn" onclick="submit()" disabled>🚀 분석 시작</button>
+    </div>
+  </div>
+
+  <!-- ── STEP 2: Progress -->
+  <div id="view-progress" class="hidden fade-up">
+    <div class="prog-card">
+      <div class="prog-top"><span>처리 중...</span><span id="pct">0%</span></div>
+      <div class="prog-step"><span class="spinner"></span><span id="step-txt">초기화 중...</span></div>
+      <div class="bar-bg"><div class="bar-fill" id="bar"></div></div>
+      <p class="prog-hint">파일 크기에 따라 1~3분 소요될 수 있습니다.</p>
+    </div>
+  </div>
+
+  <!-- ── STEP 3: Done -->
+  <div id="view-done" class="hidden fade-up">
+    <div class="done-hdr">
+      <span class="done-badge">✓ 완료</span>
+      <span class="done-title">분석 보고서가 준비되었습니다</span>
+    </div>
+    <div class="kpi-grid" id="kpi-grid"></div>
+    <div class="card">
+      <div class="card-title">다운로드</div>
+      <div class="dl-grid" id="dl-grid"></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-ghost" onclick="reset()">↩ 새 분석 시작</button>
+    </div>
+  </div>
+</main>
+
+<script>
+// ── 상태
+let files = [null,null,null];
+let jobId = null;
+let timer = null;
+
+// ── 파일 처리
+function onFile(idx, f) {
+  if (!f || !f.name.match(/\.xlsx?$/i)) return;
+  files[idx-1] = f;
+  document.getElementById('icon'+idx).textContent = '✅';
+  document.getElementById('fname'+idx).textContent = f.name;
+  document.getElementById('drop'+idx).classList.add('filled');
+  if (idx === 3) {
+    document.getElementById('yoy-info').classList.remove('hidden');
+  }
+  document.getElementById('submit-btn').disabled = !(files[0] && files[1]);
+}
+function onOver(e,i){e.preventDefault();document.getElementById('drop'+i).classList.add('over')}
+function onLeave(i){document.getElementById('drop'+i).classList.remove('over')}
+function onDrop(e,i){
+  e.preventDefault(); onLeave(i);
+  onFile(i, e.dataTransfer.files[0]);
+}
+
+// ── 뷰 전환
+function showView(name) {
+  ['upload','progress','done'].forEach(v =>
+    document.getElementById('view-'+v).classList.toggle('hidden', v !== name));
+}
+function setStep(n) {
+  [1,2,3].forEach(i => {
+    const el = document.getElementById('s'+i);
+    el.classList.remove('active','done');
+    if (i < n) { el.classList.add('done'); el.querySelector('.step-num').textContent = '✓'; }
+    else if (i === n) el.classList.add('active');
+    else el.querySelector('.step-num').textContent = i;
+    if (i < 3) document.getElementById('l'+i).classList.toggle('done', i < n);
+  });
+}
+
+// ── 제출
+async function submit() {
+  if (!files[0] || !files[1]) return;
+  const fd = new FormData();
+  fd.append('fault_report', files[0]);
+  fd.append('fault_class',  files[1]);
+  if (files[2]) fd.append('fault_report_last', files[2]);
+
+  showView('progress'); setStep(2);
+  document.getElementById('err-box').classList.add('hidden');
+
+  try {
+    // 같은 서버(8000포트)로 요청 — VITE_API_URL 없이도 항상 동작
+    const res = await fetch('/api/upload', { method:'POST', body: fd });
+    if (!res.ok) { const t = await res.text(); throw new Error(t); }
+    const data = await res.json();
+    jobId = data.job_id;
+    timer = setInterval(poll, 1500);
+  } catch(e) {
+    showError(e.message);
+  }
+}
+
+// ── 폴링
+async function poll() {
+  try {
+    const res = await fetch('/api/status/' + jobId);
+    const d = await res.json();
+    document.getElementById('step-txt').textContent = d.step || '';
+    document.getElementById('bar').style.width = (d.progress||0) + '%';
+    document.getElementById('pct').textContent = (d.progress||0) + '%';
+    if (d.status === 'done')  { clearInterval(timer); showDone(d); }
+    if (d.status === 'error') { clearInterval(timer); showError(d.step); }
+  } catch(e) { clearInterval(timer); showError('서버 연결 오류: ' + e.message); }
+}
+
+// ── 완료 화면
+function showDone(d) {
+  setStep(3); showView('done');
+  const s = d.stats;
+  const elT = s.el.line1.total + s.el.line2.total;
+  const esT = s.es.line1.total + s.es.line2.total;
+  const kpis = [
+    {lbl:'총 장애건수', val:`${elT+esT}건`, sub:'EL + ES', color:'#1B2A4A'},
+    {lbl:'EL 장애',    val:`${elT}건`, sub:`1호선 ${s.el.line1.total} + 2호선 ${s.el.line2.total}`, color:'#2C5F8A'},
+    {lbl:'ES 장애',    val:`${esT}건`, sub:`1호선 ${s.es.line1.total} + 2호선 ${s.es.line2.total}`, color:'#0D7A8A'},
+    {lbl:'분석 분기',  val:s.quarter, sub:`${s.year}년 ${s.period}`, color:'#E8843A'},
+  ];
+  // 전년비교·반복장애 배지 표시
+  const badges = [];
+  if (d.has_yoy) badges.push('<span class="yoy-done-badge">📊 전년 비교 포함</span>');
+  const elRep = (d.stats.el.repeats||[]).length;
+  const esRep = (d.stats.es.repeats||[]).length;
+  if (elRep+esRep > 0) badges.push(`<span class="repeat-done-badge">⚠ 반복장애 ${elRep+esRep}건 감지</span>`);
+
+  document.getElementById('kpi-grid').innerHTML =
+    (badges.length ? `<div style="grid-column:1/-1;padding:.5rem 0">${badges.join(' ')}</div>` : '') +
+    kpis.map(k => `
+    <div class="kpi-card">
+      <div class="kpi-bar" style="background:${k.color}"></div>
+      <div class="kpi-lbl">${k.lbl}</div>
+      <div class="kpi-val">${k.val}</div>
+      <div class="kpi-sub">${k.sub}</div>
+    </div>`).join('');
+
+  const icons = {xlsx:'📊', pptx:'📑'};
+  document.getElementById('dl-grid').innerHTML = (d.files||[]).map(f => {
+    const ext = f.name.split('.').pop();
+    const displayName = f.saveas || f.name;
+    return `
+      <div class="dl-card">
+        <div class="dl-icon">${icons[ext]||'📄'}</div>
+        <div class="dl-name">${f.label}</div>
+        <div class="dl-desc">${displayName}</div>
+        <button class="btn btn-dl"
+           onclick="downloadFile('/api/download/${jobId}/${f.name}', '${displayName.replace(/'/g, "\\'")}')">⬇ 다운로드</button>
+      </div>`;
+  }).join('');
+}
+
+// ── 에러 표시
+function showError(msg) {
+  showView('upload'); setStep(1);
+  document.getElementById('err-box').classList.remove('hidden');
+  document.getElementById('err-msg').textContent = msg;
+}
+
+// ── 파일 다운로드 (fetch + Blob 방식 - 파일명 강제 지정)
+async function downloadFile(url, filename) {
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('다운로드 실패');
+    const blob = await res.blob();
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;   // ← 이 이름으로 저장됨
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+  } catch(e) {
+    alert('다운로드 오류: ' + e.message);
+  }
+}
+
+
+// ── 전년비교 토글
+function toggleYoy() {
+  const area  = document.getElementById('yoy-drop-area');
+  const arrow = document.getElementById('yoy-arrow');
+  const open  = area.classList.toggle('hidden');
+  arrow.textContent = open ? '▶' : '▼';
+}
+// ── 리셋
+function reset() {
+  clearInterval(timer); jobId = null; files = [null,null];
+  [1,2,3].forEach(i => {
+    const el = document.getElementById('file'+i);
+    if (el) el.value='';
+    const icon = document.getElementById('icon'+i);
+    if (icon) icon.textContent = i===3 ? '📅' : '📁';
+    const fname = document.getElementById('fname'+i);
+    if (fname) fname.textContent='';
+    const drop = document.getElementById('drop'+i);
+    if (drop) drop.classList.remove('filled');
+  });
+  document.getElementById('yoy-info').classList.add('hidden');
+  document.getElementById('submit-btn').disabled = true;
+  document.getElementById('err-box').classList.add('hidden');
+  showView('upload'); setStep(1);
+}
+</script>
+</body>
+</html>
